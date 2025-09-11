@@ -1,4 +1,4 @@
-import CategoriesScreen from "@/components/auth/CategoriesScreen";
+import CategoriesScreen from "@/components/CategoriesScreen";
 import React from "react";
 
 export default function categories() {
