@@ -1,5 +1,6 @@
-import CategoriesScreen from "./(tabs)/categories";
+import LoginScreen from "@/components/LoginScreen";
+import React from "react";
 
 export default function Index() {
-  return <CategoriesScreen />;
+  return <LoginScreen />;
 }
