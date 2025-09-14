@@ -1,6 +1,6 @@
-import CategoriesScreen from "@/components/CategoriesScreen";
+// import CategoriesScreen from "@/components/CategoriesScreen";
 import React from "react";
-
+import { Text } from "react-native";
 export default function categories() {
-  return <CategoriesScreen />;
+  return <Text>categories</Text>;
 }

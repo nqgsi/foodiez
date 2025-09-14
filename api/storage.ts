@@ -1,10 +1,18 @@
-import { deleteItemAsync, getItemAsync, setItemAsync } from "expo-secure-store";
+import * as SecureStore from "expo-secure-store";
+import { deleteItemAsync, setItemAsync } from "expo-secure-store";
+import { jwtDecode } from "jwt-decode";
 
 const getToken = async () => {
   try {
-    const token = await getItemAsync("token");
-    return token;
-  } catch (error) {}
+    const token = await SecureStore.getItemAsync("token");
+    if (token) {
+      const decoded = jwtDecode<{ image: string }>(token);
+      console.log("🚀 ~ getToken ~ decoded:", decoded.image);
+      return decoded;
+    }
+  } catch (error) {
+    console.error("Error getting token:", error);
+  }
 };
 
 const storeToken = async (token: string) => {

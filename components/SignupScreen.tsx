@@ -1,7 +1,14 @@
+import { register } from "@/api/auth";
+import { storeToken } from "@/api/storage";
+import { useMutation } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
+  Image,
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -9,31 +16,130 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-// Color system (from your spec)
 const COLORS = {
-  background: "#DED7C6", // Mushroom Taupe
-  primary: "#7A9E7E", // Olive Green
-  accent: "#D35400", // Rust Orange
-  text: "#4E342E", // Dark Brown
+  background: "#DED7C6",
+  primary: "#7A9E7E",
+  accent: "#D35400",
+  text: "#4E342E",
   white: "#FFFFFF",
   card: "#EFE9DA",
   shadow: "rgba(0,0,0,0.10)",
 };
 
 const SignupScreen = () => {
-  type UserInfotype = {
-    email: string;
-    username: string;
-    password: string;
-    image: string | null;
-  };
-  const [userInfo, setUserInfo] = useState<UserInfotype>({
+  const [userInfo, setUserInfo] = useState({
     email: "",
     username: "",
     password: "",
-    image: null,
+    image: "",
   });
+
+  // Form validation function
+  const validateForm = () => {
+    const { email, username, password } = userInfo;
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return false;
+    }
+
+    // Password validation
+    if (password.length < 8) {
+      Alert.alert(
+        "Weak Password",
+        "Password must be at least 8 characters long."
+      );
+      return false;
+    }
+
+    // Username validation
+    if (!username) {
+      Alert.alert("Invalid Username", "Username cannot be empty.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: register,
+    onSuccess: async (data) => {
+      console.log("Sign up successfully:", data);
+      setUserInfo({
+        email: "",
+        username: "",
+        password: "",
+        image: "",
+      });
+      storeToken(data.token);
+      router.push("/(tabs)/home");
+    },
+    onError: (err: any) => {
+      if (isAxiosError(err)) {
+        const message = err.response?.data?.message;
+
+        if (
+          message === "Email already exists!" ||
+          message === "Username already exists!"
+        ) {
+          Alert.alert("Account Exists", message);
+        } else {
+          Alert.alert("Error", "Something went wrong. Please try again.");
+        }
+
+        console.error("Axios error:", err.message);
+        console.error("Status code:", err.response?.status);
+        console.error("Response data:", err.response?.data);
+      }
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!validateForm()) return; // Stop submission if validation fails
+
+    const formdata = new FormData();
+    formdata.append("email", userInfo.email);
+    formdata.append("username", userInfo.username);
+    formdata.append("password", userInfo.password);
+
+    if (userInfo.image) {
+      formdata.append("image", {
+        uri: userInfo.image,
+        name: "profile.jpg",
+        type: "image/jpeg",
+      } as any);
+    }
+
+    mutate(formdata);
+  };
+
+  const pickImage = async () => {
+    // Request permission for the image
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert("Permission to access gallery is required!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    console.log(result);
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setUserInfo({ ...userInfo, image: asset.uri });
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -61,8 +167,19 @@ const SignupScreen = () => {
         {/* Sign-up Card */}
         <View style={styles.card}>
           {/* Profile Image Upload */}
-          <TouchableOpacity style={styles.imageUpload} activeOpacity={0.8}>
-            <Text style={styles.imageUploadText}>Upload Profile Image</Text>
+          <TouchableOpacity
+            style={styles.imageUpload}
+            activeOpacity={0.8}
+            onPress={pickImage}
+          >
+            {userInfo.image ? (
+              <Image
+                source={{ uri: userInfo.image }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <Text style={styles.imageUploadText}>Upload Profile Image</Text>
+            )}
           </TouchableOpacity>
 
           {/* Email */}
@@ -70,10 +187,11 @@ const SignupScreen = () => {
             <Text style={styles.label}>Email</Text>
             <TextInput
               placeholder="you@example.com"
-              placeholderTextColor="#7a6b60"
+              placeholderTextColor="rgba(122, 107, 96, 0.3)"
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
+              onChangeText={(text) => setUserInfo({ ...userInfo, email: text })}
             />
           </View>
 
@@ -82,9 +200,12 @@ const SignupScreen = () => {
             <Text style={styles.label}>Username</Text>
             <TextInput
               placeholder="foodie123"
-              placeholderTextColor="#7a6b60"
+              placeholderTextColor="rgba(122, 107, 96, 0.3)"
               style={styles.input}
               autoCapitalize="none"
+              onChangeText={(text) =>
+                setUserInfo({ ...userInfo, username: text })
+              }
             />
           </View>
 
@@ -93,18 +214,32 @@ const SignupScreen = () => {
             <Text style={styles.label}>Password</Text>
             <TextInput
               placeholder="••••••••"
-              placeholderTextColor="#7a6b60"
+              placeholderTextColor="rgba(122, 107, 96, 0.3)"
               secureTextEntry={true}
               style={styles.input}
+              onChangeText={(text) =>
+                setUserInfo({ ...userInfo, password: text })
+              }
             />
           </View>
 
           {/* Actions */}
-          <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.8}>
-            <Text style={styles.primaryBtnText}>Create Account</Text>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            activeOpacity={0.8}
+            onPress={handleSubmit}
+            disabled={isPending}
+          >
+            <Text style={styles.primaryBtnText}>
+              {isPending ? "Creating..." : "Create Account"}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push("..")}
+          >
             <Text style={styles.secondaryBtnText}>
               I already have an account
             </Text>
@@ -118,21 +253,9 @@ const SignupScreen = () => {
 export default SignupScreen;
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 10,
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 8, gap: 10 },
+  brandRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
   logoBadge: {
     width: 34,
     height: 34,
@@ -146,9 +269,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  logoIcon: {
-    fontSize: 18,
-  },
+  logoIcon: { fontSize: 18 },
   brand: {
     marginLeft: 10,
     fontWeight: "700",
@@ -156,19 +277,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 0.5,
   },
-  headings: {
-    marginTop: 8,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: COLORS.text,
-  },
-  subtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: "#6B4F45",
-  },
+  headings: { marginTop: 8 },
+  title: { fontSize: 26, fontWeight: "800", color: COLORS.text },
+  subtitle: { marginTop: 6, fontSize: 14, color: "#6B4F45" },
   card: {
     marginTop: 16,
     backgroundColor: COLORS.white,
@@ -180,9 +291,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  inputGroup: {
-    width: "100%",
-  },
+  inputGroup: { width: "100%" },
   label: {
     color: COLORS.text,
     fontSize: 13,
@@ -195,7 +304,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: Platform.select({ ios: 14, android: 12 }),
     borderWidth: 1,
-    borderColor: "rgba(78,52,46,0.18)",
+    borderColor: "rgba(134, 45, 26, 0.18)",
     color: COLORS.text,
     fontSize: 15,
   },
@@ -228,11 +337,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
     backgroundColor: COLORS.white,
   },
-  secondaryBtnText: {
-    color: COLORS.accent,
-    fontWeight: "800",
-    fontSize: 15,
-  },
+  secondaryBtnText: { color: COLORS.accent, fontWeight: "800", fontSize: 15 },
+  profileImage: { width: "100%", height: "100%", borderRadius: 60 },
   imageUpload: {
     width: 120,
     height: 120,
