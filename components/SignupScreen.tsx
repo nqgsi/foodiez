@@ -33,12 +33,13 @@ const SignupScreen = () => {
     email: "",
     username: "",
     password: "",
+    confirmPassword: "", // ✅ Added confirm password
     image: "",
   });
 
   // Form validation function
   const validateForm = () => {
-    const { email, username, password } = userInfo;
+    const { email, username, password, confirmPassword } = userInfo;
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,6 +54,12 @@ const SignupScreen = () => {
         "Weak Password",
         "Password must be at least 8 characters long."
       );
+      return false;
+    }
+
+    // Confirm password validation
+    if (password !== confirmPassword) {
+      Alert.alert("Password Mismatch", "Passwords do not match.");
       return false;
     }
 
@@ -73,6 +80,7 @@ const SignupScreen = () => {
         email: "",
         username: "",
         password: "",
+        confirmPassword: "",
         image: "",
       });
       storeToken(data.token);
@@ -219,6 +227,19 @@ const SignupScreen = () => {
               style={styles.input}
               onChangeText={(text) =>
                 setUserInfo({ ...userInfo, password: text })
+              }
+            />
+          </View>
+          {/* Confirm Password */}
+          <View style={[styles.inputGroup, { marginTop: 14 }]}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              placeholder="••••••••"
+              placeholderTextColor="rgba(122, 107, 96, 0.3)"
+              secureTextEntry={true}
+              style={styles.input}
+              onChangeText={(text) =>
+                setUserInfo({ ...userInfo, confirmPassword: text })
               }
             />
           </View>

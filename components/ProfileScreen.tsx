@@ -1,7 +1,11 @@
-import React from "react";
+import { fetchProfile } from "@/api/profile";
+import AuthContext from "@/context/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import React, { useContext } from "react";
 import {
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 // Color system (same as Signup)
 const COLORS = {
   background: "#DED7C6", // Mushroom Taupe
@@ -23,6 +27,17 @@ const COLORS = {
 };
 
 const ProfileScreen = () => {
+  const { setIsAuthenticated } = useContext(AuthContext);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: fetchProfile,
+  });
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("token");
+    setIsAuthenticated(false);
+    router.dismissTo("/");
+  };
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar
@@ -109,7 +124,11 @@ const ProfileScreen = () => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          activeOpacity={0.8}
+          onPress={handleLogout}
+        >
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>

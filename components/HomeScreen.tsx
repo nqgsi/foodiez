@@ -1,18 +1,16 @@
 import { getRecipes } from "@/api/auth";
-import {
-  AntDesign,
-  Feather,
-  FontAwesome5,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { AntDesign, Feather, FontAwesome5 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React from "react";
+import { router } from "expo-router";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -27,30 +25,14 @@ const Colors = {
   danger: "#C0392B",
 };
 
-const categories: {
-  name: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-}[] = [
-  { name: "Breakfast", icon: "coffee" },
-  { name: "Lunch", icon: "food-fork-drink" },
-  { name: "Dinner", icon: "food" },
-  { name: "Dessert", icon: "ice-cream" },
-];
-
-const mostLikedRecipe = {
-  title: "Most Liked Recipe",
-  image: "https://via.placeholder.com/300x150.png?text=Best+Recipe",
-};
-
 type Recipe = {
   _id: string;
   title: string;
   image?: string;
-  time: string;
-  difficulty: string;
+  description?: string;
   user: { _id: string; username: string; image?: string } | null;
-  ingredients: string;
-  categories: string;
+  ingredients: { _id: string; name: string }[];
+  categories: { _id: string; name: string }[];
 };
 
 const HomeScreen = () => {
@@ -60,9 +42,18 @@ const HomeScreen = () => {
     isError,
   } = useQuery<Recipe[]>({
     queryKey: ["recipes"],
-
     queryFn: getRecipes,
   });
+
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  // Modal state
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+
+  const filteredRecipes = recipes?.filter((recipe) =>
+    recipe.title.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -88,56 +79,46 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <FontAwesome5 name="utensils" size={28} color={Colors.primary} />
         <View style={styles.headerRight}>
-          <Feather
-            name="search"
-            size={24}
-            color={Colors.text}
+          <TouchableOpacity
             style={{ marginRight: 15 }}
-          />
-          <AntDesign name="user" size={28} color={Colors.text} />
+            onPress={() => setSearchVisible(!searchVisible)}
+          >
+            <Feather name="search" size={26} color={Colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/profile")}>
+            <AntDesign name="user" size={28} color={Colors.text} />
+          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Categories Grid */}
-        <Text style={styles.sectionTitle}>Categories</Text>
-        <View style={styles.categoriesGrid}>
-          {categories.map((cat, index) => (
-            <TouchableOpacity key={index} style={styles.categoryCard}>
-              <MaterialCommunityIcons
-                name={cat.icon}
-                size={40}
-                color="#FFF"
-                style={{ marginBottom: 10 }}
-              />
-              <Text style={styles.categoryText}>{cat.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {searchVisible && (
+          <TextInput
+            placeholder="Search recipes..."
+            placeholderTextColor="#888"
+            value={searchText}
+            onChangeText={setSearchText}
+            style={styles.searchInput}
+          />
+        )}
 
-        {/* Featured Recipes */}
-        <Text style={styles.sectionTitle}>Featured Recipes</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.featuredScroll}
-        >
-          {recipes?.map((recipe) => (
-            <View key={recipe._id} style={styles.featuredCard}>
+        <Text style={styles.sectionTitle}>View Recipes 🍽️</Text>
+        <View style={styles.recipesList}>
+          {filteredRecipes?.map((recipe) => (
+            <TouchableOpacity
+              key={recipe._id}
+              style={styles.featuredCard}
+              onPress={() => setSelectedRecipe(recipe)}
+            >
               <Image
                 source={{
                   uri: recipe.image
-                    ? `http://192.168.14.27:8000/uploads/${recipe.image}`
+                    ? `http://172.20.10.5:8000/uploads/${recipe.image}`
                     : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
                 }}
                 style={styles.featuredImage}
               />
               <Text style={styles.recipeTitle}>{recipe.title}</Text>
-              <Text style={styles.recipeSubtitle}>
-                {recipe.time} | {recipe.difficulty}
-              </Text>
-
-              {/* User info */}
               <View style={styles.userRow}>
                 <Image
                   source={{
@@ -151,21 +132,68 @@ const HomeScreen = () => {
                   {recipe.user?.username || "Unknown"}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
-        </ScrollView>
-
-        {/* Most Liked Recipe (Static for now) */}
-        <Text style={styles.sectionTitle}>Most Liked</Text>
-        <View style={styles.mostLikedCard}>
-          <Image
-            source={{ uri: mostLikedRecipe.image }}
-            style={styles.mostLikedImage}
-          />
-          <Text style={styles.recipeTitle}>{mostLikedRecipe.title}</Text>
-          <Text style={styles.recipeSubtitle}>45 min | Medium</Text>
+          {filteredRecipes?.length === 0 && (
+            <Text style={{ color: Colors.text, fontSize: 16, marginTop: 20 }}>
+              No recipes found 🔍
+            </Text>
+          )}
         </View>
       </ScrollView>
+
+      {/* Modal */}
+      <Modal
+        visible={!!selectedRecipe}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedRecipe(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>{selectedRecipe?.title}</Text>
+              <Image
+                source={{
+                  uri: selectedRecipe?.image
+                    ? `http://172.20.10.5:8000/uploads/${selectedRecipe.image}`
+                    : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                }}
+                style={styles.modalImage}
+              />
+
+              {/* Description */}
+              {selectedRecipe?.description ? (
+                <>
+                  <Text style={styles.modalSection}>Description:</Text>
+                  <Text style={styles.modalText}>
+                    {selectedRecipe.description}
+                  </Text>
+                </>
+              ) : null}
+
+              {/* Ingredients */}
+              <Text style={styles.modalSection}>Ingredients:</Text>
+              <Text style={styles.modalText}>
+                {selectedRecipe?.ingredients.map((ing) => ing.name).join(", ")}
+              </Text>
+
+              {/* Categories */}
+              <Text style={styles.modalSection}>Categories:</Text>
+              <Text style={styles.modalText}>
+                {selectedRecipe?.categories.map((cat) => cat.name).join(", ")}
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setSelectedRecipe(null)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -190,59 +218,42 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginVertical: 15,
   },
-  categoriesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  categoryCard: {
-    backgroundColor: Colors.primary,
-    width: "48%",
-    height: 120,
-    borderRadius: 15,
+  searchInput: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 16,
     marginBottom: 15,
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
   },
-  categoryText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  featuredScroll: { marginBottom: 20 },
+  recipesList: {
+    flexDirection: "column",
+    alignItems: "center",
+  },
   featuredCard: {
-    width: 250,
+    width: "92%",
     backgroundColor: "#FFF",
     borderRadius: 15,
-    marginRight: 15,
+    marginBottom: 20,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 4,
+    paddingBottom: 10,
   },
-  featuredImage: { width: "100%", height: 150 },
+  featuredImage: { width: "100%", height: 180 },
   recipeTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: Colors.text,
-    margin: 10,
-  },
-  recipeSubtitle: {
-    fontSize: 14,
-    color: "#7A9E7E",
     marginHorizontal: 10,
-    marginBottom: 10,
+    marginTop: 10,
+    marginBottom: 5,
   },
-  mostLikedCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 15,
-    overflow: "hidden",
-    marginBottom: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  mostLikedImage: { width: "100%", height: 180 },
   loaderContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -253,8 +264,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 10,
-    marginBottom: 10,
   },
   userAvatar: { width: 30, height: 30, borderRadius: 15, marginRight: 8 },
   userName: { fontSize: 14, color: Colors.text, fontWeight: "500" },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 15,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+    color: Colors.text,
+  },
+  modalImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  modalSection: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 10,
+    color: Colors.text,
+  },
+  modalText: { fontSize: 14, marginTop: 5, color: Colors.text },
+  closeButton: {
+    backgroundColor: Colors.accent,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 15,
+    alignItems: "center",
+  },
 });

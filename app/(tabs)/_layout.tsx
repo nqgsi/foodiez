@@ -1,8 +1,9 @@
+import AuthContext from "@/context/auth-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useContext } from "react";
 import { StatusBar, View } from "react-native";
 
 const Colors = {
@@ -15,6 +16,8 @@ const Colors = {
 };
 
 export default function TabsLayout() {
+  const { isAuthenticated } = useContext(AuthContext);
+
   // <<<<<<< Updated upstream
   //   return (
   //     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -112,6 +115,7 @@ export default function TabsLayout() {
               ),
             }}
           />
+          <Tabs.Screen name="createRecipe" options={{ headerShown: false }} />
         </Tabs>
       </View>
     </QueryClientProvider>

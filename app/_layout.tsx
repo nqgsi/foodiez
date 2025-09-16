@@ -14,6 +14,7 @@ export default function RootLayout() {
           options={{ title: "Home", headerShown: false }}
         />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="createRecipe" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>
   );

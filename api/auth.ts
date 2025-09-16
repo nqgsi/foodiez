@@ -36,7 +36,7 @@ export interface Recipe {
   categories: string;
 }
 
-const getRecipes = async (): Promise<Recipe[]> => {
+const getRecipes = async () => {
   try {
     const res = await instance.get("/recipes");
     return res.data || [];

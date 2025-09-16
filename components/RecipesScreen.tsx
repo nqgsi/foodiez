@@ -1,143 +1,123 @@
-// import { getRecipes } from "@/api/auth";
-// import { useQuery } from "@tanstack/react-query";
-// import React from "react";
-// import {
-//   ActivityIndicator,
-//   Image,
-//   ScrollView,
-//   StyleSheet,
-//   Text,
-//   View,
-// } from "react-native";
-// import { SafeAreaView } from "react-native-safe-area-context";
+import { getRecipes } from "@/api/auth";
+import { RecipeDTO } from "@/api/recipes";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import React, { useMemo, useState } from "react";
+import {
+  FlatList,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import RecipeCard from "./RecipeCard";
+const COLORS = {
+  background: "#DED7C6",
+  primary: "#7A9E7E",
+  accent: "#D35400",
+  text: "#4E342E",
+  white: "#FFFFFF",
+  card: "#EFE9DA",
+  badge: "#F4D03F",
+  shadow: "rgba(0,0,0,0.10)",
+};
 
-// const Colors = {
-//   background: "#DED7C6",
-//   text: "#4E342E",
-//   danger: "#C0392B",
-// };
+export default function RecipesScreen() {
+  const [q, setQ] = useState("");
+  const { data, isLoading, isError } = useQuery<RecipeDTO[]>({
+    queryKey: ["recipes"],
+    queryFn: getRecipes,
+  });
 
-// type Recipe = {
-//   _id: string;
-//   title: string;
-//   description?: string;
-//   image?: string;
-//   user: {
-//     _id: string;
-//     username: string;
-//     image?: string;
-//   };
-//   ingredients: { name: string }[];
-//   categories: { name: string }[];
-// };
+  const filtered = useMemo(() => {
+    const list = data ?? [];
+    return list.filter((r) =>
+      r.title.toLowerCase().includes(q.trim().toLowerCase())
+    );
+  }, [data, q]);
 
-// const RecipeScreen = () => {
-//   const {
-//     data: recipes,
-//     isLoading,
-//     isError,
-//   } = useQuery<Recipe[]>({
-//     queryKey: ["recipes"],
-//     queryFn: getRecipes,
-//   });
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-//   if (isLoading) {
-//     return (
-//       <View style={styles.loaderContainer}>
-//         <ActivityIndicator size="large" color="#ffffff" />
-//       </View>
-//     );
-//   }
+      {/* ... هيدر + بحث + الأزرار ... نفس كودك */}
 
-//   if (isError) {
-//     return (
-//       <View style={styles.loaderContainer}>
-//         <Text style={{ color: Colors.danger, fontSize: 18 }}>
-//           Failed to load recipes 😔
-//         </Text>
-//       </View>
-//     );
-//   }
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          gap: 12,
+          paddingHorizontal: 16,
+          marginTop: 14,
+        }}
+      >
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.actionCard, { backgroundColor: COLORS.primary }]}
+          onPress={() => router.push("/creatRecipe")}
+        >
+          <Text style={styles.actionPlus}>＋</Text>
+          <Text style={styles.actionLabel}>Create Recipe</Text>
+        </TouchableOpacity>
 
-//   return (
-//     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-//       <ScrollView style={styles.scroll}>
-//         {recipes?.map((recipe) => (
-//           <View key={recipe._id} style={styles.card}>
-//             <Image
-//               source={{
-//                 uri: recipe.image
-//                   ? recipe.image
-//                   : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-//               }}
-//               style={styles.image}
-//             />
-//             <Text style={styles.title}>{recipe.title}</Text>
-//             {recipe.description && (
-//               <Text style={styles.description}>{recipe.description}</Text>
-//             )}
+        <Pressable
+          style={[styles.actionCard, { backgroundColor: COLORS.accent }]}
+        >
+          <Text style={styles.actionPlus}>＋</Text>
+          <Text style={styles.actionLabel}>Create Ingredients</Text>
+        </Pressable>
+      </View>
 
-//             {/* User info */}
-//             {recipe.user ? (
-//               <View style={styles.userRow}>
-//                 <Image
-//                   source={{
-//                     uri: recipe.user.image
-//                       ? recipe.user.image
-//                       : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-//                   }}
-//                   style={styles.userAvatar}
-//                 />
-//                 <Text style={styles.userName}>{recipe.user.username}</Text>
-//               </View>
-//             ) : (
-//               <View style={styles.userRow}>
-//                 <Image
-//                   source={{
-//                     uri: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-//                   }}
-//                   style={styles.userAvatar}
-//                 />
-//                 <Text style={styles.userName}>Unknown</Text>
-//               </View>
-//             )}
+      {/* قائمة الوصفات */}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item._id}
+        numColumns={2}
+        columnWrapperStyle={{ justifyContent: "space-between" }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 20,
+          paddingTop: 16,
+        }}
+        ListEmptyComponent={
+          <View style={{ alignItems: "center", padding: 24 }}>
+            <Text style={{ color: COLORS.text }}>
+              {isLoading
+                ? "Loading..."
+                : isError
+                ? "Failed to load"
+                : "No recipes"}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <RecipeCard
+            title={item.title}
+            image={item.image}
+            onPress={() => console.log("open recipe", item._id)}
+          />
+        )}
+      />
+    </SafeAreaView>
+  );
+}
 
-//             {/* Ingredients */}
-//             <Text style={styles.section}>Ingredients:</Text>
-//             <Text>{recipe.ingredients.map((ing) => ing.name).join(", ")}</Text>
-
-//             {/* Categories */}
-//             <Text style={styles.section}>Categories:</Text>
-//             <Text>{recipe.categories.map((cat) => cat.name).join(", ")}</Text>
-//           </View>
-//         ))}
-//       </ScrollView>
-//     </SafeAreaView>
-//   );
-// };
-
-// export default RecipeScreen;
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: Colors.background },
-//   scroll: { padding: 15 },
-//   loaderContainer: {
-//     flex: 1,
-//     alignItems: "center",
-//     justifyContent: "center",
-//     backgroundColor: Colors.background,
-//   },
-//   card: {
-//     backgroundColor: "#FFF",
-//     borderRadius: 10,
-//     padding: 15,
-//     marginBottom: 20,
-//   },
-//   image: { width: "100%", height: 150, borderRadius: 10, marginBottom: 10 },
-//   title: { fontSize: 18, fontWeight: "bold", marginBottom: 5 },
-//   description: { fontSize: 14, marginBottom: 10, color: Colors.text },
-//   userRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-//   userAvatar: { width: 30, height: 30, borderRadius: 15, marginRight: 8 },
-//   userName: { fontSize: 14, color: Colors.text, fontWeight: "500" },
-//   section: { fontWeight: "bold", marginTop: 5 },
-// });
+const styles = StyleSheet.create({
+  actionCard: {
+    flex: 1,
+    height: 94,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  actionPlus: { fontSize: 24, color: COLORS.white, marginBottom: 4 },
+  actionLabel: { color: COLORS.white, fontWeight: "800" },
+});
