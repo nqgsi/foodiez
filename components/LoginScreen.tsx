@@ -96,7 +96,6 @@ const LoginScreen = () => {
           </TouchableOpacity>
         </Text>
 
-        {/* Continue as Guest below the sentence */}
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/home")}
           style={styles.guestContainer}
@@ -113,7 +112,7 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#DED7C6", // Mushroom Taupe
+    backgroundColor: "#DED7C6",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 30,

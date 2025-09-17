@@ -1,56 +1,72 @@
-import instance from "./index";
+import instance, { baseURL } from "./index";
+
 export type RecipeDTO = {
   _id: string;
   title: string;
   description?: string;
-  image?: string; // backend may return relative or absolute URL
+  image?: string;
   user?: { _id: string; username: string; image?: string };
-  ingredients: { name: string }[];
-  categories: { name: string }[];
+  ingredients: { _id?: string; name: string }[];
+  categories: { _id?: string; name: string }[];
+  createdAt?: string;
+  updatedAt?: string;
 };
-export type CreateRecipeDTO = {
+const RECIPES_PATH = "/recipes";
+
+const normalizeImage = (img?: string) => {
+  if (!img) return undefined;
+  if (img.startsWith("http://") || img.startsWith("https://")) return img;
+  return `${baseURL.replace(/\/$/, "")}/uploads/${img.replace(/^\/+/, "")}`;
+};
+
+export async function getRecipes(): Promise<RecipeDTO[]> {
+  const { data } = await instance.get(RECIPES_PATH);
+  const arr: RecipeDTO[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.recipes)
+    ? data.recipes
+    : [];
+  return arr.map((r) => ({ ...r, image: normalizeImage(r.image) }));
+}
+
+export async function createRecipe({
+  title,
+  description,
+  categoryIds = [],
+  ingredientIds = [],
+  imageUri,
+}: {
   title: string;
   description?: string;
-  ingredients: string[]; // or { name: string }[] depending on backend
-  categories: string[];
-  image?: { uri: string; type: string; name: string }; // for RN image upload
-};
-export const getRecipeById = async (id: string) => {
-  console.log("🔄 Fetching recipes...");
+  categoryIds?: string[];
+  ingredientIds?: string[];
+  imageUri?: string | null;
+}): Promise<RecipeDTO> {
+  const form = new FormData();
 
-  const res = await instance.get(`/recipes/${id}`);
-  console.log("✅ recipes fetched:", res.data);
+  form.append("title", title);
+  if (description) form.append("description", description);
 
-  return res.data;
-};
-export const createRecipe = async (
-  data: CreateRecipeDTO
-): Promise<RecipeDTO> => {
-  const formData = new FormData();
+  categoryIds.forEach((id) => form.append("categories", id));
+  ingredientIds.forEach((id) => form.append("ingredients", id));
 
-  formData.append("title", data.title);
-  if (data.description) formData.append("description", data.description);
+  if (imageUri) {
+    const filename = imageUri.split("/").pop() || `recipe_${Date.now()}.jpg`;
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const type =
+      ext === "png"
+        ? "image/png"
+        : ext === "jpg" || ext === "jpeg"
+        ? "image/jpeg"
+        : "application/octet-stream";
 
-  data.ingredients.forEach((ingredient, i) => {
-    formData.append(`ingredients[${i}]`, ingredient);
-  });
-
-  data.categories.forEach((category, i) => {
-    formData.append(`categories[${i}]`, category);
-  });
-
-  if (data.image) {
-    formData.append("image", {
-      uri: data.image.uri,
-      type: data.image.type,
-      name: data.image.name,
-    } as any);
+    // @ts-ignore React Native file
+    form.append("image", { uri: imageUri, name: filename, type });
   }
 
-  const res = await instance.post("/recipes", formData, {
+  const { data } = await instance.post(RECIPES_PATH, form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-  console.log("✅ Recipe created:", res.data);
-  return res.data as RecipeDTO;
-};
+  return { ...(data as RecipeDTO), image: normalizeImage(data?.image) };
+}

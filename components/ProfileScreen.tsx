@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// Color system (same as Signup)
+
 const COLORS = {
   background: "#DED7C6", // Mushroom Taupe
   primary: "#7A9E7E", // Olive Green

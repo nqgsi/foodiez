@@ -33,22 +33,19 @@ const SignupScreen = () => {
     email: "",
     username: "",
     password: "",
-    confirmPassword: "", // ✅ Added confirm password
+    confirmPassword: "",
     image: "",
   });
 
-  // Form validation function
   const validateForm = () => {
     const { email, username, password, confirmPassword } = userInfo;
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return false;
     }
 
-    // Password validation
     if (password.length < 8) {
       Alert.alert(
         "Weak Password",
@@ -57,13 +54,11 @@ const SignupScreen = () => {
       return false;
     }
 
-    // Confirm password validation
     if (password !== confirmPassword) {
       Alert.alert("Password Mismatch", "Passwords do not match.");
       return false;
     }
 
-    // Username validation
     if (!username) {
       Alert.alert("Invalid Username", "Username cannot be empty.");
       return false;
@@ -107,7 +102,7 @@ const SignupScreen = () => {
   });
 
   const handleSubmit = () => {
-    if (!validateForm()) return; // Stop submission if validation fails
+    if (!validateForm()) return;
 
     const formdata = new FormData();
     formdata.append("email", userInfo.email);
@@ -126,7 +121,6 @@ const SignupScreen = () => {
   };
 
   const pickImage = async () => {
-    // Request permission for the image
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -156,7 +150,6 @@ const SignupScreen = () => {
         backgroundColor={COLORS.background}
       />
       <View style={styles.container}>
-        {/* Brand */}
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoIcon}>🍲</Text>
@@ -164,7 +157,6 @@ const SignupScreen = () => {
           <Text style={styles.brand}>Foodiez</Text>
         </View>
 
-        {/* Headings */}
         <View style={styles.headings}>
           <Text style={styles.title}>Create your account</Text>
           <Text style={styles.subtitle}>
@@ -172,9 +164,7 @@ const SignupScreen = () => {
           </Text>
         </View>
 
-        {/* Sign-up Card */}
         <View style={styles.card}>
-          {/* Profile Image Upload */}
           <TouchableOpacity
             style={styles.imageUpload}
             activeOpacity={0.8}
@@ -190,7 +180,6 @@ const SignupScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -203,7 +192,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Username */}
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -217,7 +205,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Password */}
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -230,7 +217,7 @@ const SignupScreen = () => {
               }
             />
           </View>
-          {/* Confirm Password */}
+
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Confirm Password</Text>
             <TextInput
@@ -244,7 +231,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Actions */}
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.8}
