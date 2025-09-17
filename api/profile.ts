@@ -1,10 +1,15 @@
+import * as SecureStore from "expo-secure-store";
 import instance from "./index";
 
-export const fetchProfile = async (id: string) => {
-  console.log("🔄 Fetching profile...");
+export const fetchProfile = async () => {
+  const userId = await SecureStore.getItemAsync("userId");
+  const token = await SecureStore.getItemAsync("token");
 
-  const res = await instance.get(`/user/get/${id}`);
-  console.log("✅ Profile fetched:", res.data);
+  if (!userId || !token) throw new Error("User not authenticated");
+
+  const res = await instance.get(`/user/get/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   return res.data;
 };

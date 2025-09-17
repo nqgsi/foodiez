@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,12 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Category,
-  createCategory,
-  deleteCategory,
-  getCategories,
-} from "../api/categories";
+import { Category, createCategory, getCategories } from "../api/categories";
 const COLORS = {
   background: "#DED7C6",
   primary: "#7A9E7E",
@@ -101,30 +97,6 @@ const CategoriesScreen = () => {
     }
   }
 
-  async function onDelete(id: string) {
-    Alert.alert("Delete", "Delete this category?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const res = await deleteCategory(id);
-
-            // Check if the response indicates failure
-            if (res?.error || res?.success === false) {
-              throw new Error("Deletion failed");
-            }
-
-            await load();
-          } catch (err) {
-            Alert.alert("account required", "you dont have an account");
-          }
-        },
-      },
-    ]);
-  }
-
   const cats = Array.isArray(categories) ? categories : [];
   const popular = cats.slice(0, 4);
   const rest = cats.slice(4);
@@ -199,7 +171,12 @@ const CategoriesScreen = () => {
                       key={c._id}
                       style={styles.gridCard}
                       activeOpacity={0.8}
-                      onLongPress={() => onDelete(c._id)}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(tabs)/home",
+                          params: { categoryId: c._id, categoryName: c.name },
+                        })
+                      }
                     >
                       {c.image ? (
                         <Image
@@ -223,7 +200,12 @@ const CategoriesScreen = () => {
                   key={c._id}
                   style={styles.listItem}
                   activeOpacity={0.8}
-                  onLongPress={() => onDelete(c._id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/home",
+                      params: { categoryId: c._id, categoryName: c.name },
+                    })
+                  }
                 >
                   {c.image ? (
                     <Image

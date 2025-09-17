@@ -37,18 +37,15 @@ const SignupScreen = () => {
     image: "",
   });
 
-  // Form validation function
   const validateForm = () => {
     const { email, username, password, confirmPassword } = userInfo;
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return false;
     }
 
-    // Password validation
     if (password.length < 8) {
       Alert.alert(
         "Weak Password",
@@ -57,13 +54,11 @@ const SignupScreen = () => {
       return false;
     }
 
-    // Confirm password validation
     if (password !== confirmPassword) {
       Alert.alert("Password Mismatch", "Passwords do not match.");
       return false;
     }
 
-    // Username validation
     if (!username) {
       Alert.alert("Invalid Username", "Username cannot be empty.");
       return false;
@@ -75,21 +70,32 @@ const SignupScreen = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: register,
     onSuccess: async (data) => {
-      console.log("Sign up successfully:", data);
-      setUserInfo({
-        email: "",
-        username: "",
-        password: "",
-        confirmPassword: "",
-        image: "",
-      });
-      storeToken(data.token);
-      router.push("/(tabs)/home");
+      try {
+        if (!data.token) {
+          Alert.alert("Error", "No token received from server.");
+          return;
+        }
+
+        storeToken(data.token);
+        console.log("Token updated successfully!");
+
+        setUserInfo({
+          email: "",
+          username: "",
+          password: "",
+          confirmPassword: "",
+          image: "",
+        });
+
+        router.push("/");
+      } catch (err) {
+        console.error("Error storing token:", err);
+        Alert.alert("Error", "Failed to save token. Try again.");
+      }
     },
     onError: (err: any) => {
       if (isAxiosError(err)) {
         const message = err.response?.data?.message;
-
         if (
           message === "Email already exists!" ||
           message === "Username already exists!"
@@ -98,16 +104,13 @@ const SignupScreen = () => {
         } else {
           Alert.alert("Error", "Something went wrong. Please try again.");
         }
-
-        console.error("Axios error:", err.message);
-        console.error("Status code:", err.response?.status);
-        console.error("Response data:", err.response?.data);
+        console.error(err);
       }
     },
   });
 
   const handleSubmit = () => {
-    if (!validateForm()) return; // Stop submission if validation fails
+    if (!validateForm()) return;
 
     const formdata = new FormData();
     formdata.append("email", userInfo.email);
@@ -259,7 +262,7 @@ const SignupScreen = () => {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.8}
-            onPress={() => router.push("..")}
+            onPress={() => router.dismissTo("/")}
           >
             <Text style={styles.secondaryBtnText}>
               I already have an account

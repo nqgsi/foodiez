@@ -1,26 +1,23 @@
 import * as SecureStore from "expo-secure-store";
-import { deleteItemAsync, setItemAsync } from "expo-secure-store";
-import { jwtDecode } from "jwt-decode";
+import { deleteItemAsync } from "expo-secure-store";
 
 const getToken = async () => {
   try {
     const token = await SecureStore.getItemAsync("token");
-    if (token) {
-      const decoded = jwtDecode<{ image: string }>(token);
-      console.log("🚀 ~ getToken ~ decoded:", decoded.image);
-      return decoded;
-    }
-  } catch (error) {
-    console.error("Error getting token:", error);
+    return token;
+  } catch (err) {
+    console.log("Error reading token:", err);
+    return null;
   }
 };
 
-const storeToken = async (token: string) => {
+const storeToken = async (token: string | object) => {
   try {
-    await setItemAsync("token", token);
-    console.log("settokendone");
-  } catch (error) {
-    console.error("Error storing token:", error);
+    const tokenString =
+      typeof token === "string" ? token : JSON.stringify(token);
+    await SecureStore.setItemAsync("token", tokenString);
+  } catch (err) {
+    console.log("Error storing token:", err);
   }
 };
 
