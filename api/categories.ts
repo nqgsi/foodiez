@@ -10,18 +10,18 @@ export type Category = {
   updatedAt?: string;
 };
 
-export async function getCategories(): Promise<Category[]> {
-  const res = await instance.get("/categories");
-  const data = res.data;
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.categories)) return data.categories;
-  console.log("getCategories(): unexpected payload", {
-    type: typeof data,
-    keys: data && typeof data === "object" ? Object.keys(data) : null,
-    sample: String(data).slice(0, 200),
-  });
-  return [];
-}
+// export async function getCategories(): Promise<Category[]> {
+//   const res = await instance.get("/categories");
+//   const data = res.data;
+//   if (Array.isArray(data)) return data;
+//   if (data && Array.isArray(data.categories)) return data.categories;
+//   console.log("getCategories(): unexpected payload", {
+//     type: typeof data,
+//     keys: data && typeof data === "object" ? Object.keys(data) : null,
+//     sample: String(data).slice(0, 200),
+//   });
+//   return [];
+// }
 
 export async function createCategory(name: string, image?: any) {
   const formData = new FormData();
@@ -47,4 +47,32 @@ export async function deleteCategory(id: string) {
   } catch (error) {
     throw error;
   }
+}
+// src/api/categories.ts
+
+export type CategoryDTO = { _id: string; name: string; image?: string };
+export type IngredientDTO = { _id: string; name: string };
+
+const unwrap = <T>(
+  payload: any,
+  keys = ["data", "categories", "ingredients", "items"]
+): T[] => {
+  if (Array.isArray(payload)) return payload as T[];
+  for (const k of keys)
+    if (Array.isArray(payload?.[k])) return payload[k] as T[];
+  return [];
+};
+
+export async function getCategories(): Promise<CategoryDTO[]> {
+  const { data } = await instance.get("/categories"); // ✅ matches Postman
+  const arr = unwrap<CategoryDTO>(data, ["categories", "data"]);
+  console.log("getCategories count:", arr.length);
+  return arr;
+}
+
+export async function getIngredients(): Promise<IngredientDTO[]> {
+  const { data } = await instance.get("/ingredients"); // ✅ matches Postman
+  const arr = unwrap<IngredientDTO>(data, ["ingredients", "data"]);
+  console.log("getIngredients count:", arr.length);
+  return arr;
 }

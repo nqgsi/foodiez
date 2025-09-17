@@ -1,10 +1,9 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
-const baseURL = "http://172.20.10.5:8000";
+const baseURL = "http://172.20.10.10:8000";
 export { baseURL };
-// 172.20.10.5
-// 192.168.14.27
+
 const instance = axios.create({
   baseURL: baseURL,
   timeout: 10000,
@@ -54,4 +53,3 @@ export default instance;
 // instance.interceptors.request.use(async (config) => {
 //   const token = await getToken();
 //   if (token) config.headers.Authorization = `Bearer ${token}`;
-// =======

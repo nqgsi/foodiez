@@ -33,7 +33,7 @@ const SignupScreen = () => {
     email: "",
     username: "",
     password: "",
-    confirmPassword: "", // ✅ Added confirm password
+    confirmPassword: "",
     image: "",
   });
 
@@ -129,7 +129,6 @@ const SignupScreen = () => {
   };
 
   const pickImage = async () => {
-    // Request permission for the image
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -159,7 +158,6 @@ const SignupScreen = () => {
         backgroundColor={COLORS.background}
       />
       <View style={styles.container}>
-        {/* Brand */}
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoIcon}>🍲</Text>
@@ -167,7 +165,6 @@ const SignupScreen = () => {
           <Text style={styles.brand}>Foodiez</Text>
         </View>
 
-        {/* Headings */}
         <View style={styles.headings}>
           <Text style={styles.title}>Create your account</Text>
           <Text style={styles.subtitle}>
@@ -175,9 +172,7 @@ const SignupScreen = () => {
           </Text>
         </View>
 
-        {/* Sign-up Card */}
         <View style={styles.card}>
-          {/* Profile Image Upload */}
           <TouchableOpacity
             style={styles.imageUpload}
             activeOpacity={0.8}
@@ -193,7 +188,6 @@ const SignupScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -206,7 +200,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Username */}
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -220,7 +213,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Password */}
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -233,7 +225,7 @@ const SignupScreen = () => {
               }
             />
           </View>
-          {/* Confirm Password */}
+
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Confirm Password</Text>
             <TextInput
@@ -247,7 +239,6 @@ const SignupScreen = () => {
             />
           </View>
 
-          {/* Actions */}
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.8}
