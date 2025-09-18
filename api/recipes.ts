@@ -1,6 +1,7 @@
 import instance, { baseURL } from "./index";
 
 export type RecipeDTO = {
+  __optimistic: any;
   _id: string;
   title: string;
   description?: string;

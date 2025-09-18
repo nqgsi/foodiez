@@ -3,10 +3,13 @@ import AuthContext from "@/context/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useContext } from "react";
+import debounce from "lodash.debounce";
+import React, { useCallback, useContext, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Modal,
+  RefreshControl,
   ScrollView,
   StatusBar,
   Text,
@@ -23,9 +26,28 @@ const COLORS = {
   white: "#FFFFFF",
   card: "#EFE9DA",
 };
-
+type Recipe = {
+  _id: string;
+  title: string;
+  image?: string;
+  description?: string;
+  user: User | null;
+  ingredients: { _id: string; name: string }[];
+  categories: { _id: string; name: string }[];
+};
+type UsersAndRecipes = {
+  users: User[];
+  recipes: Recipe[];
+};
+type User = {
+  _id: string;
+  username: string;
+  image?: string;
+};
 const ProfileScreen = () => {
   const { setIsAuthenticated } = useContext(AuthContext);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | any>(null);
 
   const {
     data: user,
@@ -36,6 +58,15 @@ const ProfileScreen = () => {
     queryKey: ["profile"],
     queryFn: fetchProfile,
   });
+
+  const handleRefresh = useCallback(
+    debounce(async () => {
+      setRefreshing(true);
+      await refetch();
+      setRefreshing(false);
+    }, 500),
+    [refetch]
+  );
 
   const handleLogout = async () => {
     await SecureStore.deleteItemAsync("token");
@@ -85,7 +116,12 @@ const ProfileScreen = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <Text
           style={{
             fontSize: 22,
@@ -130,8 +166,9 @@ const ProfileScreen = () => {
 
         {user.recipes && user.recipes.length > 0 ? (
           user.recipes.map((recipe: any) => (
-            <View
+            <TouchableOpacity
               key={recipe._id}
+              onPress={() => setSelectedRecipe(recipe)}
               style={{
                 flexDirection: "row",
                 marginBottom: 12,
@@ -159,7 +196,7 @@ const ProfileScreen = () => {
                   {recipe.title}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <View style={{ alignItems: "center", marginTop: 20 }}>
@@ -169,7 +206,7 @@ const ProfileScreen = () => {
               You don’t have any recipes yet ☹️
             </Text>
             <TouchableOpacity
-              onPress={() => router.push("/(tabs)/recipes")} // adjust route if needed
+              onPress={() => router.push("/(tabs)/recipes")}
               style={{
                 backgroundColor: COLORS.primary,
                 padding: 14,
@@ -182,6 +219,7 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+
         <TouchableOpacity
           onPress={handleLogout}
           style={{
@@ -197,6 +235,130 @@ const ProfileScreen = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Recipe Modal */}
+      {selectedRecipe && (
+        <Modal
+          visible={!!selectedRecipe}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setSelectedRecipe(null)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              paddingHorizontal: 20,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 15,
+                padding: 15,
+                maxHeight: "80%",
+              }}
+            >
+              <ScrollView>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: "bold",
+                    marginBottom: 10,
+                    textAlign: "center",
+                    color: COLORS.text,
+                  }}
+                >
+                  {selectedRecipe.title}
+                </Text>
+
+                {selectedRecipe.image && (
+                  <Image
+                    source={{
+                      uri: `http://172.20.10.5:8000/uploads/${selectedRecipe.image}`,
+                    }}
+                    style={{
+                      width: "100%",
+                      height: 180,
+                      borderRadius: 10,
+                      marginBottom: 15,
+                    }}
+                  />
+                )}
+
+                {selectedRecipe.description && (
+                  <>
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: 16,
+                        color: COLORS.text,
+                        marginTop: 10,
+                      }}
+                    >
+                      Description:
+                    </Text>
+                    <Text
+                      style={{ marginTop: 5, fontSize: 14, color: COLORS.text }}
+                    >
+                      {selectedRecipe.description}
+                    </Text>
+                  </>
+                )}
+
+                {selectedRecipe.ingredients?.length > 0 && (
+                  <>
+                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                      Ingredients:
+                    </Text>
+                    <Text>
+                      {selectedRecipe.ingredients
+                        .map((i: { name: any }) => i.name)
+                        .join(", ")}
+                    </Text>
+                  </>
+                )}
+
+                {selectedRecipe.categories?.length > 0 && (
+                  <>
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: 16,
+                        color: COLORS.text,
+                        marginTop: 10,
+                      }}
+                    >
+                      Categories:
+                    </Text>
+                    <Text
+                      style={{ marginTop: 5, fontSize: 14, color: COLORS.text }}
+                    >
+                      {selectedRecipe.category
+                        .map((c: any) => c.name)
+                        .join(", ")}
+                    </Text>
+                  </>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: COLORS.accent,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  marginTop: 15,
+                  alignItems: "center",
+                }}
+                onPress={() => setSelectedRecipe(null)}
+              >
+                <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };

@@ -1,18 +1,22 @@
-// src/app/(tabs)/creatRecipe.tsx  (or your path)
+// src/app/(tabs)/creatRecipe.tsx
 import {
   CategoryDTO,
+  createCategory,
   getCategories,
   getIngredients,
   IngredientDTO,
 } from "@/api/categories";
 import { createIngredient } from "@/api/ingrediants";
-import { createRecipe } from "@/api/recipes";
+import { fetchProfile } from "@/api/profile";
+import { createRecipe, RecipeDTO } from "@/api/recipes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -38,8 +42,13 @@ const COLORS = {
 };
 
 export default function CreateRecipeScreen() {
+  const queryClient = useQueryClient();
+
+  // --- State ---
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<CategoryDTO | null>(null);
+  const [categoriesSelected, setCategoriesSelected] = useState<CategoryDTO[]>(
+    []
+  );
   const [selectedIngredients, setSelectedIngredients] = useState<
     IngredientDTO[]
   >([]);
@@ -48,23 +57,36 @@ export default function CreateRecipeScreen() {
 
   const [openCat, setOpenCat] = useState(false);
   const [openIng, setOpenIng] = useState(false);
-
-  // NEW: small modal to create an ingredient
   const [openCreateIng, setOpenCreateIng] = useState(false);
-  const [newIngName, setNewIngName] = useState("");
+  const [openCreateCat, setOpenCreateCat] = useState(false);
 
+  const [newIngName, setNewIngName] = useState("");
+  const [newCatName, setNewCatName] = useState("");
   const [searchCat, setSearchCat] = useState("");
   const [searchIng, setSearchIng] = useState("");
 
-  const qc = useQueryClient();
+  // --- Error State ---
+  const [errors, setErrors] = useState({
+    name: "",
+    categories: "",
+    ingredients: "",
+    image: "",
+  });
 
+  // --- Fetch ---
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: getCategories,
   });
+
   const { data: ingredients = [] } = useQuery({
     queryKey: ["ingredients"],
     queryFn: getIngredients,
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ["profile"],
+    queryFn: fetchProfile,
   });
 
   const filteredCats = useMemo(
@@ -74,6 +96,7 @@ export default function CreateRecipeScreen() {
       ),
     [categories, searchCat]
   );
+
   const filteredIngs = useMemo(
     () =>
       ingredients.filter((i) =>
@@ -82,7 +105,7 @@ export default function CreateRecipeScreen() {
     [ingredients, searchIng]
   );
 
-  // ----- Create Recipe -----
+  // --- Mutations ---
   const { mutate, isPending } = useMutation({
     mutationFn: createRecipe,
     onMutate: async (vars: {
@@ -92,47 +115,53 @@ export default function CreateRecipeScreen() {
       ingredientIds?: string[];
       imageUri?: string | null;
     }) => {
-      await qc.cancelQueries({ queryKey: ["recipes"] });
-      const previous = qc.getQueryData<any[]>(["recipes"]) || [];
+      await queryClient.cancelQueries({ queryKey: ["recipes"] });
+      const previous = queryClient.getQueryData<RecipeDTO[]>(["recipes"]) || [];
 
-      const optimistic: any = {
+      const optimistic: RecipeDTO = {
         _id: `tmp-${Date.now()}`,
         title: vars.title,
-        description: vars.description,
-        image: undefined,
+        description: vars.description || "",
+        image: vars.imageUri ?? undefined,
         ingredients: [],
         categories: [],
         __optimistic: true,
+        user: currentUser,
       };
-      qc.setQueryData<any[]>(["recipes"], (old) => [
+
+      queryClient.setQueryData<RecipeDTO[]>(["recipes"], (old = []) => [
         optimistic,
-        ...(old ?? []),
+        ...old,
       ]);
+
       return { previous };
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["recipes"], ctx.previous);
+    onError: (_err, _vars, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(["recipes"], context.previous);
+      if (_err) {
+        Alert.alert("You need an account", "Please log in to create a recipe.");
+      } else {
+        Alert.alert("Error", "Something went wrong.");
+      }
     },
     onSuccess: (created) => {
-      qc.setQueryData<any[]>(["recipes"], (old) => {
-        const list = old ?? [];
-        const withoutTmp = list.filter((r) => !r.__optimistic);
+      queryClient.setQueryData<RecipeDTO[]>(["recipes"], (old = []) => {
+        const withoutTmp = old.filter((r) => !r.__optimistic);
         return [created, ...withoutTmp];
       });
+      router.back();
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["recipes"], exact: true });
-      router.back();
+      queryClient.invalidateQueries({ queryKey: ["recipes"], exact: true });
     },
   });
 
-  // ----- Create Ingredient (tiny modal action) -----
+  // --- Ingredient ---
   const { mutate: addIngredient, isPending: creatingIng } = useMutation({
     mutationFn: (name: string) => createIngredient(name),
     onSuccess: (created) => {
-      // refresh server list
-      qc.invalidateQueries({ queryKey: ["ingredients"] });
-      // optionally auto-select newly created one
+      queryClient.invalidateQueries({ queryKey: ["ingredients"] });
       setSelectedIngredients((prev) =>
         prev.find((x) => x._id === created._id)
           ? prev
@@ -141,37 +170,70 @@ export default function CreateRecipeScreen() {
       setNewIngName("");
       setOpenCreateIng(false);
     },
-    onError: (e: any) => {
-      console.warn(
-        "Create ingredient failed:",
-        e?.response?.data || e?.message
+  });
+
+  // --- Category ---
+  const { mutate: addCategory, isPending: creatingCat } = useMutation({
+    mutationFn: (name: string) => createCategory(name),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setCategoriesSelected((prev) =>
+        prev.find((x) => x._id === created._id) ? prev : [...prev, created]
       );
+      setNewCatName("");
+      setOpenCreateCat(false);
     },
   });
 
+  // --- Image Picker ---
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
+
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
     });
+
     if (!res.canceled) setImageUri(res.assets[0].uri);
   };
 
   const toggleIngredient = (ing: IngredientDTO) => {
-    setSelectedIngredients((prev) => {
-      const exists = prev.find((x) => x._id === ing._id);
-      return exists ? prev.filter((x) => x._id !== ing._id) : [...prev, ing];
-    });
+    setSelectedIngredients((prev) =>
+      prev.find((x) => x._id === ing._id)
+        ? prev.filter((x) => x._id !== ing._id)
+        : [...prev, ing]
+    );
   };
 
+  const toggleCategory = (cat: CategoryDTO) => {
+    setCategoriesSelected((prev) =>
+      prev.find((x) => x._id === cat._id)
+        ? prev.filter((x) => x._id !== cat._id)
+        : [...prev, cat]
+    );
+  };
+
+  // --- Submit with Validation ---
   const onSubmit = () => {
-    if (!name.trim()) return;
+    const newErrors = {
+      name: !name.trim() ? "Recipe name is required." : "",
+      categories:
+        categoriesSelected.length === 0 ? "Select at least one category." : "",
+      ingredients:
+        selectedIngredients.length === 0
+          ? "Select at least one ingredient."
+          : "",
+      image: !imageUri ? "Recipe image is required." : "",
+    };
+    setErrors(newErrors);
+
+    if (Object.values(newErrors).some(Boolean)) return;
+
     mutate({
       title: name,
       description,
-      categoryIds: category ? [category._id] : [],
+      categoryIds: categoriesSelected.map((c) => c._id),
       ingredientIds: selectedIngredients.map((i) => i._id),
       imageUri,
     });
@@ -202,25 +264,64 @@ export default function CreateRecipeScreen() {
                 placeholderTextColor="rgba(78,52,46,0.5)"
                 style={styles.input}
               />
+              {errors.name ? (
+                <Text style={styles.errorText}>{errors.name}</Text>
+              ) : null}
             </View>
 
-            {/* Category */}
+            {/* Categories */}
             <View style={styles.field}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={styles.label}>
+                Categories <Text style={styles.required}>*</Text>
+              </Text>
               <Pressable style={styles.input} onPress={() => setOpenCat(true)}>
                 <Text
                   style={{
-                    color: category ? COLORS.text : "rgba(78,52,46,0.5)",
+                    color: categoriesSelected.length
+                      ? COLORS.text
+                      : "rgba(78,52,46,0.5)",
                   }}
                 >
-                  {category ? category.name : "Select a category"}
+                  {categoriesSelected.length
+                    ? `${categoriesSelected.length} selected`
+                    : "Select categories"}
                 </Text>
               </Pressable>
+              {categoriesSelected.length > 0 && (
+                <View style={[styles.badgesRow, { flexWrap: "wrap" }]}>
+                  {categoriesSelected.map((i) => (
+                    <View
+                      key={i._id}
+                      style={[
+                        styles.badge,
+                        { backgroundColor: COLORS.highlight, marginTop: 6 },
+                      ]}
+                    >
+                      <Text style={styles.badgeText}>{i.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {errors.categories ? (
+                <Text style={styles.errorText}>{errors.categories}</Text>
+              ) : null}
+              <View style={{ marginTop: 8, alignItems: "flex-start" }}>
+                <TouchableOpacity
+                  onPress={() => setOpenCreateCat(true)}
+                  activeOpacity={0.85}
+                  style={styles.smallAddBtn}
+                >
+                  <Text style={styles.smallAddBtnPlus}>＋</Text>
+                  <Text style={styles.smallAddBtnText}>Create Category</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Ingredients */}
             <View style={styles.field}>
-              <Text style={styles.label}>Ingredients</Text>
+              <Text style={styles.label}>
+                Ingredients <Text style={styles.required}>*</Text>
+              </Text>
               <Pressable style={styles.input} onPress={() => setOpenIng(true)}>
                 <Text
                   style={{
@@ -250,8 +351,9 @@ export default function CreateRecipeScreen() {
                   ))}
                 </View>
               )}
-
-              {/* ⬇️ Small button to create ingredient */}
+              {errors.ingredients ? (
+                <Text style={styles.errorText}>{errors.ingredients}</Text>
+              ) : null}
               <View style={{ marginTop: 8, alignItems: "flex-start" }}>
                 <TouchableOpacity
                   onPress={() => setOpenCreateIng(true)}
@@ -280,27 +382,48 @@ export default function CreateRecipeScreen() {
 
             {/* Upload */}
             <View style={[styles.field, { marginTop: 8 }]}>
-              <Text style={styles.label}>Upload Recipe Image</Text>
+              <Text style={styles.label}>
+                Upload Recipe Image <Text style={styles.required}>*</Text>
+              </Text>
               <View style={styles.imageBox}>
-                <Text style={styles.imageBoxText}>
-                  {imageUri ? imageUri.split("/").pop() : "No image selected"}
-                </Text>
+                {imageUri ? (
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={{ width: "100%", height: "100%", borderRadius: 10 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.imageBoxText}>No image selected</Text>
+                )}
               </View>
+              {errors.image ? (
+                <Text style={styles.errorText}>{errors.image}</Text>
+              ) : null}
 
               <View style={styles.row}>
                 <TouchableOpacity
-                  activeOpacity={0.8}
                   style={[styles.button, styles.uploadBtn]}
                   onPress={pickImage}
                 >
                   <Text style={styles.buttonText}>Upload Image</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[styles.button, styles.submitBtn]}
+                  style={[
+                    styles.button,
+                    styles.submitBtn,
+                    (!name.trim() ||
+                      !categoriesSelected.length ||
+                      !selectedIngredients.length ||
+                      !imageUri) && { backgroundColor: "#a8b7ab" },
+                  ]}
                   onPress={onSubmit}
-                  disabled={isPending || !name.trim()}
+                  disabled={
+                    isPending ||
+                    !name.trim() ||
+                    !categoriesSelected.length ||
+                    !selectedIngredients.length ||
+                    !imageUri
+                  }
                 >
                   <Text style={styles.buttonText}>
                     {isPending ? "Submitting..." : "Submit"}
@@ -312,7 +435,8 @@ export default function CreateRecipeScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Category Modal (picker) */}
+      {/* ----- Modals for Categories & Ingredients ----- */}
+      {/* Category Modal */}
       <Modal
         visible={openCat}
         animationType="slide"
@@ -321,7 +445,7 @@ export default function CreateRecipeScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Select Category</Text>
+            <Text style={styles.modalTitle}>Select Categories</Text>
             <TextInput
               value={searchCat}
               onChangeText={setSearchCat}
@@ -332,26 +456,28 @@ export default function CreateRecipeScreen() {
             <FlatList
               data={filteredCats}
               keyExtractor={(item) => item._id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={[
-                    styles.modalItem,
-                    category?._id === item._id && {
-                      backgroundColor: COLORS.faint,
-                      borderColor: COLORS.primary,
-                    },
-                  ]}
-                  onPress={() => setCategory(item)}
-                >
-                  <Text style={{ color: COLORS.text }}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <View style={{ padding: 16 }}>
-                  <Text style={{ color: COLORS.text }}>No categories</Text>
-                </View>
-              }
+              renderItem={({ item }) => {
+                const picked = !!categoriesSelected.find(
+                  (x) => x._id === item._id
+                );
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalItem,
+                      picked && {
+                        backgroundColor: COLORS.faint,
+                        borderColor: COLORS.primary,
+                      },
+                    ]}
+                    onPress={() => toggleCategory(item)}
+                  >
+                    <Text style={{ color: COLORS.text }}>
+                      {picked ? "✓ " : ""}
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
             />
             <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
               <TouchableOpacity
@@ -371,7 +497,7 @@ export default function CreateRecipeScreen() {
         </View>
       </Modal>
 
-      {/* Ingredients Modal (picker) */}
+      {/* Ingredient Modal */}
       <Modal
         visible={openIng}
         animationType="slide"
@@ -397,7 +523,6 @@ export default function CreateRecipeScreen() {
                 );
                 return (
                   <TouchableOpacity
-                    activeOpacity={0.85}
                     style={[
                       styles.modalItem,
                       picked && {
@@ -414,11 +539,6 @@ export default function CreateRecipeScreen() {
                   </TouchableOpacity>
                 );
               }}
-              ListEmptyComponent={
-                <View style={{ padding: 16 }}>
-                  <Text style={{ color: COLORS.text }}>No ingredients</Text>
-                </View>
-              }
             />
             <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
               <TouchableOpacity
@@ -464,7 +584,6 @@ export default function CreateRecipeScreen() {
                     addIngredient(newIngName.trim());
                 }}
               />
-
               <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
                 <TouchableOpacity
                   style={[styles.button, styles.uploadBtn]}
@@ -497,10 +616,67 @@ export default function CreateRecipeScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Tiny Create Category Modal */}
+      <Modal
+        visible={openCreateCat}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setOpenCreateCat(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+        >
+          <View style={styles.centerOverlay}>
+            <View style={styles.smallModal}>
+              <Text style={styles.modalTitle}>Create Category</Text>
+              <TextInput
+                value={newCatName}
+                onChangeText={setNewCatName}
+                placeholder="e.g., Desserts"
+                placeholderTextColor="#7a6b60"
+                style={styles.modalInput}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (!creatingCat && newCatName.trim())
+                    addCategory(newCatName.trim());
+                }}
+              />
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={[styles.button, styles.uploadBtn]}
+                  onPress={() => setOpenCreateCat(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    {
+                      backgroundColor:
+                        !newCatName.trim() || creatingCat
+                          ? "#a8b7ab"
+                          : COLORS.primary,
+                    },
+                  ]}
+                  disabled={!newCatName.trim() || creatingCat}
+                  onPress={() => addCategory(newCatName.trim())}
+                >
+                  <Text style={styles.buttonText}>
+                    {creatingCat ? "Saving..." : "Save"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// --- Styles (unchanged) ---
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   content: { padding: 16 },
@@ -564,7 +740,6 @@ const styles = StyleSheet.create({
   uploadBtn: { backgroundColor: COLORS.accent },
   submitBtn: { backgroundColor: COLORS.primary },
   buttonText: { color: COLORS.white, fontWeight: "700", fontSize: 15 },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.2)",
@@ -591,8 +766,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(78,52,46,0.12)",
     marginBottom: 8,
   },
-
-  // Small inline "Create Ingredient" button
   smallAddBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -610,8 +783,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   smallAddBtnText: { color: COLORS.text, fontSize: 13, fontWeight: "700" },
-
-  // Centered tiny modal
   centerOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.25)",
@@ -635,4 +806,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: Platform.select({ ios: 12, android: 10 }),
   },
+  errorText: { color: COLORS.danger, fontSize: 12, marginTop: 4 },
 });

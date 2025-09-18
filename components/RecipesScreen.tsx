@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -34,7 +35,7 @@ const COLORS = {
 };
 
 // 🔧 change to your LAN/IP if needed
-const SERVER_UPLOADS = "http://172.20.10.10:8000/uploads/";
+const SERVER_UPLOADS = "http://172.20.10.5:8000/uploads/";
 
 function buildImageUrl(img?: string | null) {
   if (!img) return undefined;
@@ -52,12 +53,15 @@ export default function RecipesScreen() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDTO | null>(null);
 
   const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data, isLoading, isError } = useQuery<RecipeDTO[]>({
+  // Fetch recipes
+  const { data, isLoading, isError, refetch } = useQuery<RecipeDTO[]>({
     queryKey: ["recipes"],
     queryFn: getRecipes,
   });
 
+  // Create ingredient mutation
   const { mutate: addIngredient, isPending: creatingIng } = useMutation({
     mutationFn: (name: string) => createIngredient(name),
     onSuccess: () => {
@@ -67,6 +71,14 @@ export default function RecipesScreen() {
     },
   });
 
+  // Pull-to-refresh function
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  // Filtered recipes
   const filtered = useMemo(
     () =>
       (data ?? []).filter((r) =>
@@ -74,6 +86,15 @@ export default function RecipesScreen() {
       ),
     [data, q]
   );
+
+  // Show spinner while loading
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -130,21 +151,19 @@ export default function RecipesScreen() {
         numColumns={2}
         columnWrapperStyle={{ justifyContent: "space-between" }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={{ alignItems: "center", padding: 24 }}>
             <Text style={{ color: COLORS.text }}>
-              {isLoading
-                ? "Loading..."
-                : isError
-                ? "Failed to load"
-                : "No recipes"}
+              {isError ? "Failed to load" : "No recipes"}
             </Text>
           </View>
         }
         renderItem={({ item }) => (
           <RecipeCard
             title={item.title}
-            image={buildImageUrl(item.image)}
+            image={buildImageUrl(item.image) || undefined} // fix TypeScript
             onPress={() => setSelectedRecipe(item)}
           />
         )}
@@ -173,14 +192,14 @@ export default function RecipesScreen() {
                 style={styles.recipeModalImage}
               />
 
-              {selectedRecipe?.description ? (
+              {selectedRecipe?.description && (
                 <>
                   <Text style={styles.recipeModalSection}>Description</Text>
                   <Text style={styles.recipeModalText}>
                     {selectedRecipe.description}
                   </Text>
                 </>
-              ) : null}
+              )}
 
               <Text style={styles.recipeModalSection}>Ingredients</Text>
               <Text style={styles.recipeModalText}>
