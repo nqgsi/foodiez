@@ -148,7 +148,9 @@ const ProfileScreen = () => {
         <View style={{ alignItems: "center", marginBottom: 20 }}>
           {user.image ? (
             <Image
-              source={{ uri: `http://172.20.10.5:8000/uploads/${user.image}` }}
+              source={{
+                uri: `http://192.168.14.27:8000/uploads/${user.image}`,
+              }}
               style={{ width: 120, height: 120, borderRadius: 60 }}
             />
           ) : (
@@ -193,7 +195,7 @@ const ProfileScreen = () => {
               {recipe.image && (
                 <Image
                   source={{
-                    uri: `http://172.20.10.5:8000/uploads/${recipe.image}`,
+                    uri: `http://192.168.14.27:8000/uploads/${recipe.image}`,
                   }}
                   style={{ width: 74, height: 74, borderRadius: 12 }}
                 />
@@ -289,7 +291,7 @@ const ProfileScreen = () => {
                 {selectedRecipe.image && (
                   <Image
                     source={{
-                      uri: `http://172.20.10.5:8000/uploads/${selectedRecipe.image}`,
+                      uri: `http://192.168.14.27:8000/uploads/${selectedRecipe.image}`,
                     }}
                     style={{
                       width: "100%",

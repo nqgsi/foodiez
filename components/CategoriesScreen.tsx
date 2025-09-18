@@ -27,7 +27,7 @@ const COLORS = {
   shadow: "rgba(0,0,0,0.10)",
 };
 
-const SERVER_URL = "http://172.20.10.5:8000/uploads/";
+const SERVER_URL = "http://192.168.14.27:8000/uploads/";
 
 const CategoriesScreen = () => {
   const [categories, setCategories] = useState<Category[]>([]);

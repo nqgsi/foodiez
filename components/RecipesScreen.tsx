@@ -35,7 +35,7 @@ const COLORS = {
 };
 
 // 🔧 change to your LAN/IP if needed
-const SERVER_UPLOADS = "http://172.20.10.5:8000/uploads/";
+const SERVER_UPLOADS = "http://192.168.14.27:8000/uploads/";
 
 function buildImageUrl(img?: string | null) {
   if (!img) return undefined;

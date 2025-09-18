@@ -120,7 +120,7 @@ const HomeScreen = () => {
       <Image
         source={{
           uri: recipe.image
-            ? `http://172.20.10.5:8000/uploads/${recipe.image}`
+            ? `http://192.168.14.27:8000/uploads/${recipe.image}`
             : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
         }}
         style={styles.featuredImage}
@@ -130,7 +130,7 @@ const HomeScreen = () => {
         {recipe.user?.image ? (
           <Image
             source={{
-              uri: `http://172.20.10.5:8000/uploads/${recipe.user.image}`,
+              uri: `http://192.168.14.27:8000/uploads/${recipe.user.image}`,
             }}
             style={styles.userAvatar}
           />
@@ -223,7 +223,7 @@ const HomeScreen = () => {
                 <Image
                   source={{
                     uri: selectedRecipe?.image
-                      ? `http://172.20.10.5:8000/uploads/${selectedRecipe.image}`
+                      ? `http://192.168.14.27:8000/uploads/${selectedRecipe.image}`
                       : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
                   }}
                   style={styles.modalImage}
