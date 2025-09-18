@@ -223,7 +223,7 @@ const HomeScreen = () => {
                 <Image
                   source={{
                     uri: selectedRecipe?.image
-                      ? `http://172.20.10.10:8000/uploads/${selectedRecipe.image}`
+                      ? `http://172.20.10.5:8000/uploads/${selectedRecipe.image}`
                       : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
                   }}
                   style={styles.modalImage}

@@ -1,12 +1,14 @@
 import { fetchProfile } from "@/api/profile";
+import { deleteRecipe } from "@/api/recipes";
 import AuthContext from "@/context/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import debounce from "lodash.debounce";
 import React, { useCallback, useContext, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   RefreshControl,
@@ -17,7 +19,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 const COLORS = {
   background: "#DED7C6",
   primary: "#7A9E7E",
@@ -44,10 +45,22 @@ type User = {
   username: string;
   image?: string;
 };
+// ... all your imports above
+
 const ProfileScreen = () => {
   const { setIsAuthenticated } = useContext(AuthContext);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | any>(null);
+
+  const { mutate: removeRecipe, isPending: deleting } = useMutation({
+    mutationFn: (id: string) => deleteRecipe(id),
+    onSuccess: () => {
+      refetch();
+    },
+    onError: (err) => {
+      console.error("Delete failed", err);
+    },
+  });
 
   const {
     data: user,
@@ -130,7 +143,7 @@ const ProfileScreen = () => {
             marginBottom: 20,
           }}
         >
-          Profile
+          Profile👤
         </Text>
         <View style={{ alignItems: "center", marginBottom: 20 }}>
           {user.image ? (
@@ -139,7 +152,7 @@ const ProfileScreen = () => {
               style={{ width: 120, height: 120, borderRadius: 60 }}
             />
           ) : (
-            <Text style={{ fontSize: 40 }}>👤</Text>
+            <Text style={{ fontSize: 40 }}>🧑🏻</Text>
           )}
           <Text
             style={{
@@ -335,13 +348,53 @@ const ProfileScreen = () => {
                     <Text
                       style={{ marginTop: 5, fontSize: 14, color: COLORS.text }}
                     >
-                      {selectedRecipe.category
+                      {selectedRecipe.categories
                         .map((c: any) => c.name)
                         .join(", ")}
                     </Text>
                   </>
                 )}
               </ScrollView>
+
+              {/* ✅ Delete Button */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "red",
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  marginTop: 10,
+                  alignItems: "center",
+                  opacity: deleting ? 0.6 : 1,
+                }}
+                onPress={() => {
+                  if (!deleting) {
+                    // ✅ Show confirmation alert before deletion
+                    Alert.alert(
+                      "Confirm Delete",
+                      "Are you sure you want to delete this recipe?",
+                      [
+                        {
+                          text: "Cancel",
+                          style: "cancel",
+                        },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => {
+                            removeRecipe(selectedRecipe._id, {
+                              onSuccess: () => setSelectedRecipe(null),
+                            });
+                          },
+                        },
+                      ]
+                    );
+                  }
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                  {deleting ? "Deleting..." : "Delete Recipe"}
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={{

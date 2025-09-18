@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Category, createCategory, getCategories } from "../api/categories";
+
 const COLORS = {
   background: "#DED7C6",
   primary: "#7A9E7E",
@@ -35,7 +36,6 @@ const CategoriesScreen = () => {
   const [newName, setNewName] = useState("");
   const [image, setImage] = useState<any>(null);
 
-  // Helper function to build image URLs
   const buildImageUrl = (img?: string) => {
     if (!img) return null;
     return img.startsWith("http") ? img : `${SERVER_URL}${img}`;
@@ -184,7 +184,17 @@ const CategoriesScreen = () => {
                           style={styles.gridImage}
                         />
                       ) : (
-                        <View style={styles.gridImage} />
+                        <View style={styles.gridImage}>
+                          <Text
+                            style={{
+                              fontSize: 40,
+                              textAlign: "center",
+                              lineHeight: 110,
+                            }}
+                          >
+                            🍲
+                          </Text>
+                        </View>
                       )}
                       <Text style={styles.gridTitle}>{c.name}</Text>
                     </TouchableOpacity>
@@ -213,7 +223,17 @@ const CategoriesScreen = () => {
                       style={styles.listPic}
                     />
                   ) : (
-                    <View style={styles.listPic} />
+                    <View style={styles.listPic}>
+                      <Text
+                        style={{
+                          fontSize: 28,
+                          textAlign: "center",
+                          lineHeight: 54,
+                        }}
+                      >
+                        🍲
+                      </Text>
+                    </View>
                   )}
                   <Text style={styles.listTitle}>{c.name}</Text>
                 </TouchableOpacity>

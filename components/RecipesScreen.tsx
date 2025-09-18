@@ -103,7 +103,7 @@ export default function RecipesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backIcon}>👨🏻‍🍳</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Recipes</Text>
         <View style={{ width: 36, height: 36 }} />
@@ -185,9 +185,7 @@ export default function RecipesScreen() {
 
               <Image
                 source={{
-                  uri:
-                    buildImageUrl(selectedRecipe?.image) ||
-                    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                  uri: buildImageUrl(selectedRecipe?.image) || "",
                 }}
                 style={styles.recipeModalImage}
               />

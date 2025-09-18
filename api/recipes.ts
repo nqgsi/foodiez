@@ -71,3 +71,12 @@ export async function createRecipe({
 
   return { ...(data as RecipeDTO), image: normalizeImage(data?.image) };
 }
+export async function deleteRecipe(id: string) {
+  try {
+    const res = await instance.delete(`/recipes/${id}`);
+
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+}
